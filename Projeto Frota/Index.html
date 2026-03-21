@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Hubble A.I. - Grupo Servopa</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; }
+        #map { height: 100vh; width: 100%; }
+        
+        /* Loading Elegante */
+        #loading {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 20, 40, 0.9); color: #00d2ff;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 9999; font-size: 24px; font-weight: bold;
+        }
+        .spinner { border: 4px solid rgba(255,255,255,0.1); border-left-color: #00d2ff; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Painel Lateral Neomorfismo */
+        #painel-filtros {
+            position: absolute; top: 20px; left: 20px; width: 320px;
+            background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15); z-index: 5; display: none;
+            backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.5);
+        }
+        h2 { margin-top: 0; font-size: 20px; color: #003366; text-align: center; border-bottom: 2px solid #00d2ff; padding-bottom: 10px; }
+        .filtro-group { margin-bottom: 15px; }
+        label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 5px; color: #333; }
+        select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; outline: none; transition: border 0.3s; }
+        select:focus { border-color: #00d2ff; }
+        
+        /* InfoWindow do Google Maps */
+        .gm-style-iw { padding: 0 !important; border-radius: 8px; }
+        .popup-content { padding: 15px; width: 250px; }
+        .popup-title { font-weight: bold; font-size: 16px; color: #003366; margin-bottom: 5px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .popup-total { font-size: 22px; font-weight: bold; color: #e60000; margin-bottom: 10px; }
+        #chartContainer { width: 100%; height: 180px; }
+    </style>
+</head>
+<body>
+
+    <div id="loading">
+        <div class="spinner"></div>
+        <span id="loading-text">Iniciando Hubble A.I... Carregando Matriz de Dados</span>
+    </div>
+
+    <div id="painel-filtros">
+        <h2>🛰️ Hubble A.I.</h2>
+        
+        <div class="filtro-group">
+            <label>1. MARCA DO VEÍCULO</label>
+            <select id="filtro-marca" onchange="aplicarFiltros()"><option value="TODAS">🌟 Todas as Marcas</option></select>
+        </div>
+        <div class="filtro-group">
+            <label>2. CATEGORIA / CARROCERIA</label>
+            <select id="filtro-categoria" onchange="aplicarFiltros()"><option value="TODAS">🚘 Todas as Categorias</option></select>
+        </div>
+        <div class="filtro-group">
+            <label>3. TIPO DE MOTORIZAÇÃO</label>
+            <select id="filtro-motor" onchange="aplicarFiltros()"><option value="TODAS">⚡ Todos os Motores</option></select>
+        </div>
+        
+        <div style="font-size: 12px; color: #666; text-align: center; margin-top: 20px;">
+            Clique nas áreas de calor no mapa para abrir o raio-x da cidade.
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script>
+        let map, heatmap, infoWindow;
+        let dadosGlobais = [];
+        let graficoAtual = null;
+
+        // Função principal chamada pelo Google Maps ao carregar
+        function initMap() {
+            map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 5,
+                center: { lat: -15.7801, lng: -47.9292 }, // Centro do Brasil
+                mapTypeId: "roadmap",
+                mapTypeControl: false,
+                streetViewControl: false,
+                styles: [
+                    { elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
+                    { featureType: "poi", stylers: [{ visibility: "off" }] },
+                    { featureType: "transit", stylers: [{ visibility: "off" }] }
+                ] 
+            });
+
+            infoWindow = new google.maps.InfoWindow();
+            
+            // Evento de clique no mapa
+            map.addListener("click", (event) => buscarCidadePerto(event.latLng));
+
+            carregarDados();
+        }
+
+        // Carrega o JSON de 13MB
+        async function carregarDados() {
+            try {
+                const response = await fetch('hubble_mapa_br_profundo.json');
+                if (!response.ok) throw new Error("Erro de rede ao carregar o JSON");
+                
+                document.getElementById('loading-text').innerText = "Processando Matriz Multidimensional...";
+                dadosGlobais = await response.json();
+                
+                extrairOpcoesFiltros();
+                
+                heatmap = new google.maps.visualization.HeatmapLayer({
+                    data: [], map: map, radius: 30, opacity: 0.8, maxIntensity: 5000,
+                    gradient: ['rgba(0, 255, 255, 0)', 'rgba(0, 255, 255, 1)', 'rgba(0, 191, 255, 1)', 'rgba(0, 127, 255, 1)', 'rgba(0, 63, 255, 1)', 'rgba(0, 0, 255, 1)', 'rgba(0, 0, 223, 1)', 'rgba(0, 0, 191, 1)', 'rgba(0, 0, 159, 1)', 'rgba(0, 0, 127, 1)', 'rgba(63, 0, 91, 1)', 'rgba(127, 0, 63, 1)', 'rgba(191, 0, 31, 1)', 'rgba(255, 0, 0, 1)']
+                });
+
+                document.getElementById("loading").style.display = "none";
+                document.getElementById("painel-filtros").style.display = "block";
+                
+                aplicarFiltros(); // Desenha o mapa inicial com tudo
+            } catch (error) {
+                alert("Erro ao carregar os dados. Veja o console. " + error);
+                console.error(error);
+            }
+        }
+
+        // Varre os 13MB para preencher os <select> com os nomes exatos
+        function extrairOpcoesFiltros() {
+            let marcas = new Set(), categorias = new Set(), motores = new Set();
+            
+            dadosGlobais.forEach(cidade => {
+                if(!cidade.d) return;
+                Object.keys(cidade.d).forEach(marca => {
+                    marcas.add(marca);
+                    Object.keys(cidade.d[marca]).forEach(cat => {
+                        categorias.add(cat);
+                        Object.keys(cidade.d[marca][cat]).forEach(mot => motores.add(mot));
+                    });
+                });
+            });
+
+            const preencherSelect = (id, setValores) => {
+                const select = document.getElementById(id);
+                [...setValores].sort().forEach(val => {
+                    let opt = document.createElement("option"); opt.value = val; opt.text = val;
+                    select.appendChild(opt);
+                });
+            };
+
+            preencherSelect("filtro-marca", marcas);
+            preencherSelect("filtro-categoria", categorias);
+            preencherSelect("filtro-motor", motores);
+        }
+
+        // O Coração do Hubble: Filtra os dados cruzados e atualiza o mapa
+        function aplicarFiltros() {
+            const fMarca = document.getElementById("filtro-marca").value;
+            const fCat = document.getElementById("filtro-categoria").value;
+            const fMotor = document.getElementById("filtro-motor").value;
+            
+            let pontosHeatmap = [];
+            let maxDensidade = 0;
+
+            dadosGlobais.forEach(cidade => {
+                let peso = 0;
+                
+                // Se não tem filtro nenhum, pega o total da cidade direto (muito rápido)
+                if (fMarca === "TODAS" && fCat === "TODAS" && fMotor === "TODAS") {
+                    peso = cidade.t;
+                } else if (cidade.d) {
+                    // Loop de cruzamento profundo
+                    for (const [marca, objCat] of Object.entries(cidade.d)) {
+                        if (fMarca !== "TODAS" && marca !== fMarca) continue;
+                        
+                        for (const [categoria, objMot] of Object.entries(objCat)) {
+                            if (fCat !== "TODAS" && categoria !== fCat) continue;
+                            
+                            for (const [motor, qtd] of Object.entries(objMot)) {
+                                if (fMotor !== "TODAS" && motor !== fMotor) continue;
+                                peso += qtd;
+                            }
+                        }
+                    }
+                }
+
+                if (peso > 0) {
+                    pontosHeatmap.push({ location: new google.maps.LatLng(cidade.lat, cidade.lng), weight: peso });
+                    if (peso > maxDensidade) maxDensidade = peso;
+                }
+            });
+
+            // Ajusta a intensidade das cores baseado no volume filtrado
+            heatmap.set('maxIntensity', maxDensidade > 0 ? (maxDensidade * 0.3) : 100);
+            heatmap.setData(pontosHeatmap);
+        }
+
+        // --- SISTEMA DE CLIQUE NO MAPA ---
+        function buscarCidadePerto(latLngClick) {
+            let cidadeAlvo = null;
+            let menorDistancia = 0.5; // Raio de tolerância do clique
+
+            dadosGlobais.forEach(d => {
+                let dist = Math.sqrt(Math.pow(d.lat - latLngClick.lat(), 2) + Math.pow(d.lng - latLngClick.lng(), 2));
+                if (dist < menorDistancia) { menorDistancia = dist; cidadeAlvo = d; }
+            });
+
+            if (cidadeAlvo) abrirRaioX(cidadeAlvo, latLngClick);
+        }
+
+        function abrirRaioX(cidadeDados, posicao) {
+            // Conta as marcas dentro daquela cidade baseada APENAS no filtro atual
+            const fCat = document.getElementById("filtro-categoria").value;
+            const fMotor = document.getElementById("filtro-motor").value;
+            let totaisPorMarca = {};
+            let totalFiltrado = 0;
+
+            if(cidadeDados.d) {
+                for (const [marca, objCat] of Object.entries(cidadeDados.d)) {
+                    let somaMarca = 0;
+                    for (const [categoria, objMot] of Object.entries(objCat)) {
+                        if (fCat !== "TODAS" && categoria !== fCat) continue;
+                        for (const [motor, qtd] of Object.entries(objMot)) {
+                            if (fMotor !== "TODAS" && motor !== fMotor) continue;
+                            somaMarca += qtd;
+                        }
+                    }
+                    if(somaMarca > 0) {
+                        totaisPorMarca[marca] = somaMarca;
+                        totalFiltrado += somaMarca;
+                    }
+                }
+            }
+
+            // Pega as top 5 marcas para não poluir o gráfico
+            let topMarcas = Object.entries(totaisPorMarca).sort((a,b) => b[1] - a[1]).slice(0, 5);
+            
+            const content = `
+                <div class="popup-content">
+                    <div class="popup-title">${cidadeDados.c}</div>
+                    <div style="font-size:12px; color:#666;">Volume Encontrado:</div>
+                    <div class="popup-total">${totalFiltrado.toLocaleString()} veículos</div>
+                    <div id="chartContainer"><canvas id="graficoRaioX"></canvas></div>
+                </div>
+            `;
+
+            infoWindow.setContent(content);
+            infoWindow.setPosition(posicao);
+            infoWindow.open(map);
+
+            // Renderiza o Chart.js com as Top Marcas encontradas no clique
+            setTimeout(() => {
+                if (graficoAtual) graficoAtual.destroy();
+                const ctx = document.getElementById('graficoRaioX').getContext('2d');
+                graficoAtual = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: topMarcas.map(m => m[0]),
+                        datasets: [{
+                            data: topMarcas.map(m => m[1]),
+                            backgroundColor: ['#003366', '#00d2ff', '#ffcc00', '#e60000', '#4d4d4d']
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: {size: 10} } } } }
+                });
+            }, 250);
+        }
+    </script>
+    
+    <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA-I6OcxTuBC3hR9EwVIfhPAdiaIgUbkGE&libraries=visualization&callback=initMap"></script>
+</body>
+</html>
