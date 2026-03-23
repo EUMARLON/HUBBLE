@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <title>Hubble A.I. | Inteligência Estratégica</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        hubble: { 400: '#00d2ff', 500: '#00b8e6', 900: '#030507', 800: '#0b0f14', 700: '#111827', 600: '#1f2937' }
+                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    boxShadow: { 'neon': '0 0 20px rgba(0, 210, 255, 0.2)' }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&display=swap');
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #374151; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+        .gm-style-iw.gm-style-iw-c { background: #111827 !important; border-radius: 16px !important; padding: 0 !important; border: 1px solid #1f2937; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7) !important; }
+        .gm-style-iw-d { overflow: hidden !important; }
+        .gm-ui-hover-effect { background-color: #1f2937 !important; top: 10px !important; right: 10px !important; border-radius: 50% !important; transition: 0.2s; }
+        .gm-ui-hover-effect:hover { background-color: #ef4444 !important; }
+        .gm-ui-hover-effect span { background-color: white !important; }
+    </style>
+</head>
+<body class="text-gray-200 h-screen flex flex-col font-sans">
+
+    <div id="loading" class="fixed inset-0 bg-hubble-900 z-50 flex flex-col items-center justify-center">
+        <i class="fa-solid fa-satellite-dish text-6xl text-hubble-400 mb-6 animate-pulse"></i>
+        <h1 class="text-5xl font-black text-hubble-400 tracking-widest drop-shadow-neon">HUBBLE A.I.</h1>
+        <p class="text-gray-400 mt-6 text-xs font-bold tracking-[0.2em] animate-bounce">S I N C R O N I Z A N D O  . . .</p>
+    </div>
+
+    <header class="h-16 bg-hubble-800 border-b border-hubble-600 flex items-center justify-between px-6 shrink-0 z-20 shadow-lg">
+        <div class="flex items-center gap-4 w-1/5">
+            <i class="fa-solid fa-layer-group text-hubble-400 text-2xl"></i>
+            <div>
+                <h1 class="text-xl font-black text-white tracking-widest leading-none drop-shadow-neon">HUBBLE<span class="text-hubble-400">.AI</span></h1>
+                <span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Inteligência de Mercado</span>
+            </div>
+        </div>
+
+        <div class="flex gap-4 w-3/5 justify-center">
+            <select id="f-marca" onchange="trocarMarca()" class="w-48 bg-hubble-700 border border-hubble-600 text-xs font-semibold rounded-lg px-3 py-2 outline-none focus:border-hubble-400 focus:shadow-neon transition-all cursor-pointer">
+                <option value="TODAS">Fabricante: Todos</option>
+            </select>
+            <select id="f-modelo" onchange="trocarModelo()" class="w-48 bg-hubble-700 border border-hubble-600 text-xs font-semibold rounded-lg px-3 py-2 outline-none focus:border-hubble-400 focus:shadow-neon transition-all cursor-pointer">
+                <option value="TODOS">Modelo: Todos</option>
+            </select>
+            <select id="f-cat" onchange="renderizarInterface()" class="w-48 bg-hubble-700 border border-hubble-600 text-xs font-semibold rounded-lg px-3 py-2 outline-none focus:border-hubble-400 focus:shadow-neon transition-all cursor-pointer">
+                <option value="TODAS">Carroceria: Todas</option>
+            </select>
+        </div>
+
+        <div class="w-1/5 text-right">
+            <div class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Volume Nacional</div>
+            <div id="kpi-vol" class="text-2xl font-black text-white leading-none drop-shadow-neon">0</div>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden relative">
+        <aside class="w-80 bg-hubble-800 border-r border-hubble-600 flex flex-col shrink-0 z-10 overflow-y-auto custom-scrollbar">
+            <div class="p-6 border-b border-hubble-600 bg-gradient-to-b from-hubble-800 to-hubble-900/50">
+                <h2 class="text-[10px] font-bold text-gray-400 tracking-widest uppercase mb-4"><i class="fa-solid fa-brain text-hubble-400 mr-2"></i> Análise de Região</h2>
+                <div id="cidade-nome-painel" class="text-2xl font-black text-white mb-1 drop-shadow-md">Brasil (Geral)</div>
+                <div id="cidade-vol-painel" class="text-xs text-hubble-400 font-bold mb-6">Aguardando seleção...</div>
+                <div class="h-40 relative w-full"><canvas id="chartEsqResumo"></canvas></div>
+            </div>
+            <div class="p-6 flex-1 bg-gradient-to-b from-transparent to-hubble-900 flex flex-col gap-6">
+                <div>
+                    <h3 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3 border-b border-hubble-700 pb-2">Insights Automáticos</h3>
+                    <div id="painel-insights" class="space-y-3"><p class="text-[10px] text-gray-600 italic">Iniciando motor...</p></div>
+                </div>
+                <div>
+                    <h3 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3 border-b border-hubble-700 pb-2">Métricas Avançadas</h3>
+                    <div id="painel-metricas" class="space-y-4"><p class="text-[10px] text-gray-600 italic">Aguardando dados...</p></div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="flex-1 relative overflow-hidden bg-hubble-900 shadow-inner">
+            <div id="map" class="absolute inset-0 w-full h-full"></div>
+            
+            <div class="absolute top-5 left-1/2 -translate-x-1/2 z-10 flex gap-2 bg-hubble-800/80 backdrop-blur-md p-1.5 rounded-full border border-hubble-600 shadow-2xl" id="btn-group-camadas">
+                <button onclick="mudarCamada('TODAS', this)" class="btn-camada px-5 py-2 text-xs font-bold rounded-full bg-hubble-400 text-hubble-900 shadow-neon transition-all">Densidade Total</button>
+                <button onclick="mudarCamada('SUV', this)" class="btn-camada px-5 py-2 text-xs font-bold rounded-full text-gray-300 hover:text-white hover:bg-hubble-700 transition-all">Calor SUV</button>
+                <button onclick="mudarCamada('PICAPE', this)" class="btn-camada px-5 py-2 text-xs font-bold rounded-full text-gray-300 hover:text-white hover:bg-hubble-700 transition-all">Calor Picape</button>
+            </div>
+
+            <div class="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 w-[85%] max-w-2xl bg-hubble-800/90 backdrop-blur-md px-2 py-2 rounded-2xl border border-hubble-600 shadow-2xl flex items-center justify-between gap-1">
+                <button onclick="mudarSafra('TODAS', this)" class="btn-safra flex-1 py-3 text-[10px] font-bold rounded-xl bg-hubble-400 text-hubble-900 shadow-inner transition-all">FROTA TOTAL (15-26)</button>
+                <button onclick="mudarSafra('H', this)" class="btn-safra flex-1 py-3 text-[10px] font-bold rounded-xl text-gray-400 hover:text-white hover:bg-hubble-700 transition-all">HISTÓRICO (15-21)</button>
+                <button onclick="mudarSafra('T', this)" class="btn-safra flex-1 py-3 text-[10px] font-bold rounded-xl text-gray-400 hover:text-white hover:bg-hubble-700 transition-all">TRANSIÇÃO (22-23)</button>
+                <button onclick="mudarSafra('R', this)" class="btn-safra flex-1 py-3 text-[10px] font-bold rounded-xl text-gray-400 hover:text-white hover:bg-hubble-700 transition-all">RECENTE (24-26)</button>
+            </div>
+        </main>
+
+        <aside class="w-80 bg-hubble-800 border-l border-hubble-600 flex flex-col shrink-0 z-10 p-6 overflow-y-auto custom-scrollbar">
+            <h2 class="text-[10px] font-bold text-gray-400 tracking-widest uppercase border-b border-hubble-600 pb-3 mb-5"><i class="fa-solid fa-chart-pie text-hubble-400 mr-2"></i> Performance Direta</h2>
+            <div class="bg-gradient-to-b from-hubble-900/50 to-transparent border border-hubble-700 p-5 rounded-xl mb-6 shadow-inner">
+                <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Top 5 Modelos (Ranking)</h3>
+                <ul id="lista-top-modelos" class="space-y-4"><li class="text-xs text-gray-500 italic text-center py-4">Clique no mapa para carregar</li></ul>
+            </div>
+            <div class="bg-gradient-to-b from-hubble-900/50 to-transparent border border-hubble-700 p-5 rounded-xl mb-6 flex-1 shadow-inner">
+                <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Curva de Adoção</h3>
+                <div class="h-32 relative w-full"><canvas id="chartDirEvolucao"></canvas></div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        let map, heatmap, infoWindow, dadosGlobais = [];
+        let alvoClique = null;
+        let chartEsq = null, chartDir = null;
+        let safraAtiva = 'TODAS'; 
+        let camadaAtiva = 'TODAS'; 
+        let statusNacional = { rankings: {}, rankingCats: {}, volRecente: 0, volTotal: 0 };
+
+        const deepBlueStyle = [
+            { elementType: "geometry", stylers: [{ color: "#0b0f14" }] },
+            { featureType: "water", stylers: [{ color: "#000000" }] },
+            { featureType: "administrative.country", elementType: "geometry.stroke", stylers: [{ color: "#1f2937", weight: 2 }] },
+            { featureType: "administrative.province", elementType: "geometry.stroke", stylers: [{ color: "#1f2937", weight: 1 }] },
+            { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#6b7280" }] },
+            { featureType: "administrative.locality", elementType: "labels.text.stroke", stylers: [{ color: "#0b0f14", weight: 3 }] },
+            { featureType: "poi", stylers: [{ visibility: "off" }] },
+            { featureType: "road", stylers: [{ visibility: "off" }] },
+            { featureType: "transit", stylers: [{ visibility: "off" }] }
+        ];
+
+        function initMap() {
+            map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 5, center: { lat: -15.79, lng: -48.01 },
+                styles: deepBlueStyle,
+                restriction: { latLngBounds: { north: 5.3, south: -33.8, west: -74.0, east: -34.7 }, strictBounds: false },
+                disableDefaultUI: true, zoomControl: true, zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_CENTER }
+            });
+
+            heatmap = new google.maps.visualization.HeatmapLayer({
+                data: [], map: map, radius: 45, opacity: 0.9,
+                gradient: ['rgba(0,0,0,0)', '#0ea5e9', '#22d3ee', '#818cf8', '#d946ef', '#ef4444', '#b91c1c']
+            });
+
+            infoWindow = new google.maps.InfoWindow();
+
+            map.addListener("click", (e) => {
+                if (!e.latLng) return;
+                let alvo = null, dMin = 0.5;
+                dadosGlobais.forEach(d => {
+                    let dist = Math.sqrt(Math.pow(d.lt - e.latLng.lat(), 2) + Math.pow(d.lg - e.latLng.lng(), 2));
+                    if (dist < dMin) { dMin = dist; alvo = d; }
+                });
+
+                if (alvo) {
+                    alvoClique = alvo;
+                    abrirBolhaMapa(alvo, e.latLng);
+                    processarDadosCidadePainel(alvo);
+                } else {
+                    infoWindow.close();
+                    alvoClique = null;
+                    resetarPainelLateral();
+                }
+            });
+
+            inicializarGraficosVazios();
+            carregarJSON();
+        }
+
+        async function carregarJSON() {
+            try {
+                // AQUI ELE CHAMA O ARQUIVO DE 25MB OFICIALMENTE!
+                const r = await fetch('hubble_mapa_br_profundo.json');
+                dadosGlobais = await r.json();
+                document.getElementById("loading").style.display = "none";
+                preencherFiltroMarca();
+                renderizarInterface();
+            } catch (e) { alert("Erro ao carregar os dados. Verifique se o JSON está na pasta."); console.error(e); }
+        }
+
+        function preencherFiltroMarca() {
+            let marcas = new Set();
+            dadosGlobais.forEach(cid => Object.keys(cid.d).forEach(m => marcas.add(m)));
+            const sel = document.getElementById("f-marca");
+            sel.innerHTML = '<option value="TODAS">Fabricante: Todos</option>';
+            [...marcas].sort().forEach(m => sel.innerHTML += `<option value="${m}">${m}</option>`);
+        }
+
+        function trocarMarca() {
+            const marca = document.getElementById("f-marca").value;
+            const selMod = document.getElementById("f-modelo");
+            const selCat = document.getElementById("f-cat");
+
+            selMod.innerHTML = '<option value="TODOS">Modelo: Todos</option>';
+            selCat.innerHTML = '<option value="TODAS">Carroceria: Todas</option>';
+
+            if(marca !== "TODAS") {
+                let mods = new Set(), cats = new Set();
+                dadosGlobais.forEach(cid => {
+                    if(cid.d[marca]) {
+                        Object.keys(cid.d[marca]).forEach(mod => {
+                            mods.add(mod);
+                            if(cid.d[marca][mod].ct) cats.add(cid.d[marca][mod].ct);
+                        });
+                    }
+                });
+                [...mods].sort().forEach(m => selMod.innerHTML += `<option value="${m}">${m}</option>`);
+                [...cats].sort().forEach(c => selCat.innerHTML += `<option value="${c}">${c}</option>`);
+            }
+            renderizarInterface();
+        }
+
+        function trocarModelo() {
+            const marca = document.getElementById("f-marca").value;
+            const modelo = document.getElementById("f-modelo").value;
+            const selCat = document.getElementById("f-cat");
+
+            if(modelo !== "TODOS" && marca !== "TODAS") {
+                let catDetectada = "";
+                dadosGlobais.some(cid => {
+                    if(cid.d[marca] && cid.d[marca][modelo]) { catDetectada = cid.d[marca][modelo].ct; return true; }
+                    return false;
+                });
+                if(catDetectada) selCat.innerHTML = `<option value="${catDetectada}">Carroceria: ${catDetectada}</option>`;
+            } else {
+                trocarMarca();
+                return;
+            }
+            renderizarInterface();
+        }
+
+        function mudarCamada(tipo, elemento) {
+            camadaAtiva = tipo;
+            document.querySelectorAll('.btn-camada').forEach(btn => {
+                btn.classList.remove('bg-hubble-400', 'text-hubble-900', 'shadow-lg');
+                btn.classList.add('text-gray-300', 'hover:text-white', 'hover:bg-hubble-700');
+            });
+            elemento.classList.remove('text-gray-300', 'hover:text-white', 'hover:bg-hubble-700');
+            elemento.classList.add('bg-hubble-400', 'text-hubble-900', 'shadow-lg');
+
+            if(tipo !== 'TODAS') document.getElementById("f-cat").value = "TODAS"; 
+            renderizarInterface();
+        }
+
+        function mudarSafra(novaSafra, elemento) {
+            safraAtiva = novaSafra;
+            document.querySelectorAll('.btn-safra').forEach(btn => {
+                btn.classList.remove('bg-hubble-400', 'text-hubble-900', 'font-black');
+                btn.classList.add('text-gray-400');
+            });
+            if (elemento) {
+                elemento.classList.remove('text-gray-400');
+                elemento.classList.add('bg-hubble-400', 'text-hubble-900', 'font-black');
+            }
+            renderizarInterface();
+        }
+
+        function renderizarInterface() {
+            const fM = document.getElementById("f-marca").value;
+            const fMod = document.getElementById("f-modelo").value;
+            const fC = document.getElementById("f-cat").value;
+
+            let pts = [], totalVol = 0, maior = 0;
+            statusNacional = { rankings: {}, rankingCats: {}, volRecente: 0, volTotal: 0 };
+
+            dadosGlobais.forEach(cid => {
+                let peso = 0;
+                for (let m in cid.d) {
+                    if (fM !== "TODAS" && m !== fM) continue;
+                    for (let mod in cid.d[m]) {
+                        if (fMod !== "TODOS" && mod !== fMod) continue;
+
+                        const s = cid.d[m][mod].s;
+                        const ct = cid.d[m][mod].ct || 'OUTROS';
+
+                        const qH = s['H'] || 0; const qT = s['T'] || 0; const qR = s['R'] || 0;
+                        const qTotal = qH + qT + qR;
+
+                        let qFiltrado = 0;
+                        if (safraAtiva === 'TODAS') qFiltrado = qTotal;
+                        else if (safraAtiva === 'H') qFiltrado = qH;
+                        else if (safraAtiva === 'T') qFiltrado = qT;
+                        else if (safraAtiva === 'R') qFiltrado = qR;
+
+                        if (camadaAtiva === 'SUV' && !ct.includes('SUV')) continue;
+                        if (camadaAtiva === 'PICAPE' && !ct.includes('PIC')) continue;
+                        if (camadaAtiva === 'TODAS' && fC !== "TODAS" && ct !== fC) continue;
+
+                        if (qFiltrado > 0) {
+                            if (safraAtiva === 'TODAS' || safraAtiva === 'R') statusNacional.volRecente += qR;
+                            statusNacional.volTotal += qFiltrado;
+                            let chave = (fM === "TODAS") ? m : mod;
+                            statusNacional.rankings[chave] = (statusNacional.rankings[chave] || 0) + qFiltrado;
+                            statusNacional.rankingCats[ct] = (statusNacional.rankingCats[ct] || 0) + qFiltrado;
+                        }
+                        peso += qFiltrado;
+                    }
+                }
+                if (peso > 0) {
+                    pts.push({ location: new google.maps.LatLng(cid.lt, cid.lg), weight: peso });
+                    totalVol += peso;
+                    if (peso > maior) maior = peso;
+                }
+            });
+
+            document.getElementById("kpi-vol").innerText = totalVol.toLocaleString('pt-BR');
+            let intensidade = camadaAtiva === 'TODAS' ? 0.2 : 0.5;
+            heatmap.set('maxIntensity', Math.max(15, maior * intensidade));
+            heatmap.setData(pts);
+
+            if(alvoClique) {
+                processarDadosCidadePainel(alvoClique);
+            } else {
+                atualizarInsightsDeMercado(statusNacional.rankings, statusNacional.rankingCats, statusNacional.volRecente, statusNacional.volTotal, "NACIONAL");
+                let catDados = Object.entries(statusNacional.rankingCats).sort((a,b) => b[1]-a[1]).slice(0,4);
+                if(catDados.length > 0) atualizarChart(chartEsq, catDados.map(x=>x[0]), catDados.map(x=>x[1]), 'doughnut');
+            }
+        }
+
+        function abrirBolhaMapa(cid, pos) {
+            infoWindow.setContent(`
+                <div class="bg-gray-900 px-5 py-4 w-56 text-center border-b-2 border-hubble-400">
+                    <h3 class="text-white font-black text-lg">${cid.c.split('/')[0]}</h3>
+                    <p class="text-xs text-gray-400 font-bold">${cid.c.split('/')[1]}</p>
+                    <div class="mt-2 text-[10px] text-hubble-400 uppercase font-bold tracking-widest"><i class="fa-solid fa-chart-line mr-1"></i> Dados no Painel</div>
+                </div>
+            `);
+            infoWindow.setPosition(pos);
+            infoWindow.open(map);
+        }
+
+        function processarDadosCidadePainel(cid) {
+            const fM = document.getElementById("f-marca").value;
+            const fMod = document.getElementById("f-modelo").value;
+
+            let volTotalHistorico = 0, volRecente = 0, volFiltrado = 0;
+            let rankings = {}, rankingCats = {};
+            let totalH = 0, totalT = 0, totalR = 0;
+
+            for (let m in cid.d) {
+                if (fM !== "TODAS" && m !== fM) continue;
+                for (let mod in cid.d[m]) {
+                    if (fMod !== "TODOS" && mod !== fMod) continue;
+
+                    const s = cid.d[m][mod].s;
+                    const ct = cid.d[m][mod].ct || 'OUTROS';
+
+                    const qH = s['H'] || 0; const qT = s['T'] || 0; const qR = s['R'] || 0;
+                    const qTotal = qH + qT + qR;
+
+                    let qFiltrado = 0;
+                    if (safraAtiva === 'TODAS') qFiltrado = qTotal;
+                    else if (safraAtiva === 'H') qFiltrado = qH;
+                    else if (safraAtiva === 'T') qFiltrado = qT;
+                    else if (safraAtiva === 'R') qFiltrado = qR;
+
+                    if (camadaAtiva === 'SUV' && !ct.includes('SUV')) continue;
+                    if (camadaAtiva === 'PICAPE' && !ct.includes('PIC')) continue;
+
+                    volTotalHistorico += qTotal;
+                    totalH += qH; totalT += qT; totalR += qR;
+
+                    if (qFiltrado > 0) {
+                        volFiltrado += qFiltrado;
+                        if (safraAtiva === 'TODAS' || safraAtiva === 'R') volRecente += qR;
+                        let chave = (fM === "TODAS") ? m : mod;
+                        rankings[chave] = (rankings[chave] || 0) + qFiltrado;
+                        rankingCats[ct] = (rankingCats[ct] || 0) + qFiltrado;
+                    }
+                }
+            }
+
+            atualizarInsightsDeMercado(rankings, rankingCats, volRecente, volFiltrado, "LOCAL");
+
+            const indiceAtualidade = volTotalHistorico > 0 ? ((volRecente / volTotalHistorico) * 100).toFixed(1) : 0;
+            let labelSafra = safraAtiva === 'TODAS' ? 'Total 15-26' : (safraAtiva === 'H' ? 'Histórico 15-21' : (safraAtiva === 'T' ? 'Transição 22-23' : 'Recente 24-26'));
+
+            document.getElementById("cidade-nome-painel").innerText = cid.c.split('/')[0];
+            document.getElementById("cidade-vol-painel").innerHTML = `
+                <div class="flex justify-between items-end">
+                    <span class="text-hubble-400 font-bold">${volFiltrado.toLocaleString('pt-BR')} un. <span class="text-[10px] text-gray-500">(${labelSafra})</span></span>
+                    <span class="text-[10px] bg-hubble-900 px-2 py-1 rounded text-purple-400 font-bold border border-purple-500/30">IA: ${indiceAtualidade}%</span>
+                </div>
+            `;
+
+            let catDados = Object.entries(rankingCats).sort((a,b) => b[1]-a[1]).slice(0,4);
+            if(catDados.length > 0) atualizarChart(chartEsq, catDados.map(x=>x[0]), catDados.map(x=>x[1]), 'doughnut');
+            else atualizarChart(chartEsq, ['Sem Vendas no Período'], [1], 'doughnut', true);
+
+            let topDir = Object.entries(rankings).sort((a,b) => b[1]-a[1]).slice(0,5);
+            let listaHtml = "";
+            let medalhas = ['<i class="fa-solid fa-trophy text-yellow-400"></i>', '<i class="fa-solid fa-medal text-gray-300"></i>', '<i class="fa-solid fa-medal text-orange-400"></i>'];
+
+            topDir.forEach((item, index) => {
+                let perc = volFiltrado > 0 ? ((item[1] / volFiltrado) * 100).toFixed(1) : 0;
+                let icone = index < 3 ? medalhas[index] : `<span class="text-gray-600 font-bold">${index+1}.</span>`;
+                listaHtml += `
+                    <li class="flex justify-between items-center text-xs">
+                        <div class="flex items-center gap-2 w-32 truncate"><span class="w-4 text-center">${icone}</span> <span class="text-white font-bold truncate">${item[0]}</span></div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-hubble-400 font-bold w-12 text-right">${perc}%</span>
+                            <div class="w-16 bg-gray-800 h-1.5 rounded-full"><div class="bg-hubble-400 h-1.5 rounded-full" style="width: ${perc}%"></div></div>
+                        </div>
+                    </li>
+                `;
+            });
+            document.getElementById("lista-top-modelos").innerHTML = listaHtml || '<li class="text-xs text-gray-500">Nenhum dado neste período</li>';
+
+            if (chartDir) {
+                let coresEvolucao = ['#374151', '#8b5cf6', '#00d2ff'];
+                if (safraAtiva === 'H') coresEvolucao = ['#0ea5e9', '#1f2937', '#1f2937'];
+                if (safraAtiva === 'T') coresEvolucao = ['#1f2937', '#8b5cf6', '#1f2937'];
+                if (safraAtiva === 'R') coresEvolucao = ['#1f2937', '#1f2937', '#0ea5e9'];
+
+                chartDir.config.type = 'bar';
+                chartDir.data.labels = ['Histórico', 'Transição', 'Recente'];
+                chartDir.data.datasets[0].data = [totalH, totalT, totalR];
+                chartDir.data.datasets[0].backgroundColor = coresEvolucao;
+                chartDir.data.datasets[0].borderRadius = 4;
+                chartDir.update();
+            }
+        }
+
+        function resetarPainelLateral() {
+            document.getElementById("cidade-nome-painel").innerText = "Brasil (Visão Geral)";
+            document.getElementById("cidade-vol-painel").innerHTML = `<span class="text-hubble-400 font-bold">Visão Nacional</span>`;
+            document.getElementById("lista-top-modelos").innerHTML = '<li class="text-xs text-gray-400 italic">Clique em uma cidade para ver o ranking local</li>';
+
+            atualizarInsightsDeMercado(statusNacional.rankings, statusNacional.rankingCats, statusNacional.volRecente, statusNacional.volTotal, "NACIONAL");
+            let catDados = Object.entries(statusNacional.rankingCats).sort((a,b) => b[1]-a[1]).slice(0,4);
+            if(catDados.length > 0) atualizarChart(chartEsq, catDados.map(x=>x[0]), catDados.map(x=>x[1]), 'doughnut');
+
+            if (chartDir) {
+                chartDir.data.datasets[0].data = [0,0,0];
+                chartDir.update();
+            }
+        }
+
+        function inicializarGraficosVazios() {
+            Chart.defaults.color = '#9ca3af';
+            Chart.defaults.font.family = 'Inter';
+
+            chartEsq = new Chart(document.getElementById("chartEsqResumo"), {
+                type: 'doughnut',
+                data: { labels: ['Aguardando...'], datasets: [{ data: [1], backgroundColor: ['#1f2937'], borderWidth: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: {size: 10} } }, tooltip: {enabled: false} } }
+            });
+
+            chartDir = new Chart(document.getElementById("chartDirEvolucao"), {
+                type: 'bar',
+                data: {
+                    labels: ['Histórico', 'Transição', 'Recente'],
+                    datasets: [{ label: 'Evolução', data: [0, 0, 0], backgroundColor: ['#374151', '#8b5cf6', '#00d2ff'], borderRadius: 4 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { grid: { display: false }, ticks: { color: '#6b7280', font: {size: 10, weight: 'bold'} } }, y: { display: false } }
+                }
+            });
+        }
+
+        function atualizarChart(chart, labels, data, type, isPlaceholder = false) {
+            chart.data.labels = labels;
+            let cores = isPlaceholder ? ['#1f2937'] : ['#00d2ff', '#a855f7', '#3b82f6', '#ec4899', '#f43f5e'];
+            chart.data.datasets[0].data = data;
+            chart.data.datasets[0].backgroundColor = cores;
+            chart.options.plugins.tooltip.enabled = !isPlaceholder;
+            chart.update();
+        }
+
+        function atualizarInsightsDeMercado(rankingsModelos, rankingCats, volRecente, volTotal, contexto) {
+            const painelInsights = document.getElementById("painel-insights");
+            const painelMetricas = document.getElementById("painel-metricas");
+
+            if (volTotal === 0) {
+                painelInsights.innerHTML = `<p class="text-xs text-gray-600 italic">Dados insuficientes no filtro atual.</p>`;
+                painelMetricas.innerHTML = '';
+                return;
+            }
+
+            const ia = ((volRecente / volTotal) * 100).toFixed(1); 
+
+            let topCat = "OUTROS", topCatVol = 0;
+            for (let c in rankingCats) { if (rankingCats[c] > topCatVol) { topCatVol = rankingCats[c]; topCat = c; } }
+
+            let topModVol = 0;
+            for (let m in rankingsModelos) { if (rankingsModelos[m] > topModVol) topModVol = rankingsModelos[m]; }
+            const mci = ((topModVol / volTotal) * 100).toFixed(1);
+
+            let mciLabel = mci > 40 ? "ALTO (Monopólio)" : (mci > 20 ? "MÉDIO (Competitivo)" : "BAIXO (Pulverizado)");
+            let mciCor = mci > 40 ? "bg-red-500" : (mci > 20 ? "bg-yellow-400" : "bg-green-400");
+            let mciTextCor = mci > 40 ? "text-red-500" : (mci > 20 ? "text-yellow-400" : "text-green-400");
+
+            let htmlInsights = "";
+            let prefixo = contexto === "NACIONAL" ? "O Brasil" : "Esta região";
+
+            if (ia > 35) {
+                htmlInsights += `<div class="bg-hubble-700/50 border border-hubble-600/50 p-3 rounded-lg flex gap-3 items-start"><i class="fa-solid fa-bolt text-hubble-400 mt-0.5"></i><p class="text-[11px] text-gray-300 leading-tight"><span class="font-bold text-white">Alta Aceleração:</span> ${prefixo} renovou impressionantes <span class="text-hubble-400 font-bold">${ia}%</span> da frota selecionada na safra recente (24-26).</p></div>`;
+            } else if (ia < 15) {
+                htmlInsights += `<div class="bg-hubble-700/50 border border-hubble-600/50 p-3 rounded-lg flex gap-3 items-start"><i class="fa-solid fa-clock text-yellow-500 mt-0.5"></i><p class="text-[11px] text-gray-300 leading-tight"><span class="font-bold text-white">Frota Maturada:</span> Apenas ${ia}% de renovação recente. Forte oportunidade para campanhas de Trade-In (Troca por 0km).</p></div>`;
+            } else {
+                htmlInsights += `<div class="bg-hubble-700/50 border border-hubble-600/50 p-3 rounded-lg flex gap-3 items-start"><i class="fa-solid fa-arrow-trend-up text-green-400 mt-0.5"></i><p class="text-[11px] text-gray-300 leading-tight"><span class="font-bold text-white">Demanda Estável:</span> Renovação de ${ia}%, seguindo o fluxo normal de substituição do mercado ${contexto.toLowerCase()}.</p></div>`;
+            }
+
+            if (topCat !== "OUTROS" && topCatVol > 0) {
+                let catPerc = ((topCatVol / volTotal) * 100).toFixed(0);
+                htmlInsights += `<div class="bg-hubble-700/50 border border-hubble-600/50 p-3 rounded-lg flex gap-3 items-start"><i class="fa-solid fa-bullseye text-purple-400 mt-0.5"></i><p class="text-[11px] text-gray-300 leading-tight"><span class="font-bold text-white">Vocação ${topCat}:</span> Domina <span class="text-purple-400 font-bold">${catPerc}%</span> das vendas. Alinhar mix de estoque para este perfil.</p></div>`;
+            }
+
+            painelInsights.innerHTML = htmlInsights;
+            painelMetricas.innerHTML = `
+                <div>
+                    <div class="flex justify-between text-[10px] mb-1"><span class="text-gray-400 uppercase tracking-wider">Market Concentration (MCI)</span><span class="font-bold ${mciTextCor}">${mciLabel}</span></div>
+                    <div class="w-full bg-hubble-700 rounded-full h-1.5"><div class="${mciCor} h-1.5 rounded-full transition-all duration-1000" style="width: ${Math.min(mci * 1.5, 100)}%"></div></div>
+                </div>
+                <div>
+                    <div class="flex justify-between text-[10px] mb-1 mt-3"><span class="text-gray-400 uppercase tracking-wider">Demand Profile (RDP)</span><span class="font-bold text-purple-400">${topCat} (${((topCatVol/volTotal)*100).toFixed(1)}%)</span></div>
+                    <div class="w-full bg-hubble-700 rounded-full h-1.5"><div class="bg-purple-400 h-1.5 rounded-full transition-all duration-1000" style="width: ${Math.min((topCatVol/volTotal)*100, 100)}%"></div></div>
+                </div>
+            `;
+        }
+    </script>
+    
+
+    <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA-I6OcxTuBC3hR9EwVIfhPAdiaIgUbkGE&libraries=visualization&callback=initMap"></script>
+</body>
+</html>
